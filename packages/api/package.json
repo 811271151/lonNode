@@ -1,0 +1,22 @@
+{
+  "name": "@IonNode/api",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@IonNode/auth": "workspace:*",
+    "@IonNode/db": "workspace:*",
+    "@trpc/client": "catalog:",
+    "@trpc/server": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@IonNode/config": "workspace:*",
+    "typescript": "^6.0.3"
+  }
+}
