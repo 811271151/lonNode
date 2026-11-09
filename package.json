@@ -24,6 +24,8 @@
     "fix": "ultracite fix"
   },
   "dependencies": {
+    "@types/yargs": "^17.0.35",
+    "yargs": "^18.2.0",
     "zod": "catalog:"
   },
   "devDependencies": {

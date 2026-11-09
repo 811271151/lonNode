@@ -1,55 +1,26 @@
 # API Layer - 任务清单
 
-## Task 2.1: 实现 nodesRouter
+- [x] T-01: [后端] 实现 nodesRouter (~3h)
+  - 依赖: 无
+  - 文件: packages/api/src/routers/nodes.ts
+  - AC: 所有 Node CRUD API 实现完成
 
-- [x] 创建 `packages/api/src/routers/nodes.ts`
-- [x] 实现 list procedure (搜索+筛选)
-- [x] 实现 get procedure
-- [x] 实现 create procedure (唯一性检查)
-- [x] 实现 update procedure
-- [x] 实现 delete procedure
-- [x] 实现 calculateNodeStatus 函数
+- [x] T-02: [后端] 实现 nodeDataRouter (~2h)
+  - 依赖: 无
+  - 文件: packages/api/src/routers/node-data.ts
+  - AC: 数据上报和查询 API 实现完成
 
-**状态**: ✅ 已完成
+- [x] T-03: [后端] 集成到 appRouter (~20min)
+  - 依赖: T-01, T-02
+  - 文件: packages/api/src/routers/index.ts
+  - AC: 无
 
----
+- [ ] T-04: [测试] 类型检查 (~15min)
+  - 依赖: T-01, T-02, T-03
+  - 文件: packages/api/src (全部文件)
+  - AC: 类型检查通过
 
-## Task 2.2: 实现 nodeDataRouter
-
-- [x] 创建 `packages/api/src/routers/node-data.ts`
-- [x] 实现 report procedure (上报+更新状态)
-- [x] 实现 list procedure (时间范围查询)
-- [x] 实现 latest procedure
-
-**状态**: ✅ 已完成
-
----
-
-## Task 2.3: 集成到 appRouter
-
-- [x] 在 `packages/api/src/routers/index.ts` 中导入
-- [x] 挂载 nodes 和 nodeData 路由
-
-**状态**: ✅ 已完成
-
----
-
-## Task 2.4: 类型检查
-
-- [ ] 运行 `pnpm run check-types --filter=@IonNode/api`
-- [ ] 修复类型错误（如有）
-
-**状态**: ⏸️ 待执行
-
----
-
-## Task 2.5: 测试 API
-
-- [ ] 启动 server
-- [ ] 使用 tRPC client 测试 CRUD
-- [ ] 测试数据上报
-- [ ] 测试状态计算
-
-**状态**: ⏸️ 待执行
-
-**Depends on**: 数据库配置完成
+- [ ] T-05: [测试] 测试 API (~1h)
+  - 依赖: T-01, T-02, T-03
+  - 文件: (手动测试，无文件改动)
+  - AC: 可通过 tRPC 客户端调用

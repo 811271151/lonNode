@@ -1,47 +1,55 @@
 "use client";
+import { useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 
 import { useTRPC } from "@/utils/trpc";
-
-const TITLE_TEXT = `
- ██████╗ ███████╗████████╗████████╗███████╗██████╗
- ██╔══██╗██╔════╝╚══██╔══╝╚══██╔══╝██╔════╝██╔══██╗
- ██████╔╝█████╗     ██║      ██║   █████╗  ██████╔╝
- ██╔══██╗██╔══╝     ██║      ██║   ██╔══╝  ██╔══██╗
- ██████╔╝███████╗   ██║      ██║   ███████╗██║  ██║
- ╚═════╝ ╚══════╝   ╚═╝      ╚═╝   ╚══════╝╚═╝  ╚═╝
-
- ████████╗    ███████╗████████╗ █████╗  ██████╗██╗  ██╗
- ╚══██╔══╝    ██╔════╝╚══██╔══╝██╔══██╗██╔════╝██║ ██╔╝
-    ██║       ███████╗   ██║   ███████║██║     █████╔╝
-    ██║       ╚════██║   ██║   ██╔══██║██║     ██╔═██╗
-    ██║       ███████║   ██║   ██║  ██║╚██████╗██║  ██╗
-    ╚═╝       ╚══════╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝
- `;
+import { NodeStatusTable } from "@/components/dashboard/node-status-table";
+import { StatCard } from "@/components/dashboard/stat-card";
 
 export default function Home() {
   const trpc = useTRPC();
-  const healthCheck = useQuery(trpc.healthCheck.queryOptions());
+  const router = useRouter();
+  const { data: nodes } = useQuery({
+    ...trpc.nodes.list.queryOptions({}),
+    refetchInterval: 10000,
+  });
+
+  const stats = useMemo(() => {
+    if (!nodes) {
+      return { total: 0, online: 0, offline: 0, warning: 0 };
+    }
+
+    return {
+      total: nodes.length,
+      online: nodes.filter((n) => n.status === "online").length,
+      offline: nodes.filter((n) => n.status === "offline").length,
+      warning: nodes.filter((n) => n.status === "warning").length,
+    };
+  }, [nodes]);
+
+  const handleRowClick = (nodeId: string) => {
+    router.push(`/dashboard/nodes/${nodeId}`);
+  };
 
   return (
-    <div className="container mx-auto max-w-3xl px-4 py-2">
-      <pre className="overflow-x-auto font-mono text-sm">{TITLE_TEXT}</pre>
-      <div className="grid gap-6">
-        <section className="rounded-lg border p-4">
-          <h2 className="mb-2 font-medium">API Status</h2>
-          <div className="flex items-center gap-2">
-            <div
-              className={`h-2 w-2 rounded-full ${healthCheck.data ? "bg-green-500" : "bg-red-500"}`}
-            />
-            <span className="text-sm text-muted-foreground">
-              {healthCheck.isLoading
-                ? "Checking..."
-                : healthCheck.data
-                  ? "Connected"
-                  : "Disconnected"}
-            </span>
-          </div>
-        </section>
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold">IonNode Dashboard</h1>
+        <p className="mt-2 text-muted-foreground">
+          Monitor and manage your IoT devices
+        </p>
+      </div>
+
+      <div className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatCard title="Total Nodes" value={stats.total} />
+        <StatCard title="Online" value={stats.online} />
+        <StatCard title="Offline" value={stats.offline} />
+        <StatCard title="Warning" value={stats.warning} />
+      </div>
+
+      <div>
+        <NodeStatusTable onRowClick={handleRowClick} />
       </div>
     </div>
   );
