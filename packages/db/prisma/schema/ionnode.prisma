@@ -1,0 +1,33 @@
+// IonNode Models
+
+model Node {
+  id          String   @id @default(cuid())
+  nodeId      String   @unique @map("node_id")
+  name        String
+  type        String
+  location    String?
+  status      String   @default("offline")
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  lastSeenAt  DateTime @default(now()) @map("last_seen_at")
+
+  data NodeData[]
+
+  @@map("nodes")
+}
+
+model NodeData {
+  id          String   @id @default(cuid())
+  nodeId      String   @map("node_id")
+  temperature Float?
+  humidity    Float?
+  voltage     Float?
+  battery     Float?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  node Node @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  @@index([nodeId, createdAt])
+  @@map("node_data")
+}
