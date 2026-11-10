@@ -1,0 +1,38 @@
+feat: 完成 IonNode MVP 所有核心功能
+
+## 新增功能
+
+### 前端页面
+- ✅ Dashboard Page: 统计卡片 + 设备状态表格
+- ✅ Nodes List Page: 完整 CRUD + 搜索筛选
+- ✅ Node Detail Page: 实时数据 + 历史图表
+
+### 后端 API
+- ✅ nodes router: list, get, create, update, delete
+- ✅ nodeData router: report, latest, list
+- ✅ 状态自动计算逻辑
+
+### UI 组件
+- ✅ Dialog, AlertDialog, Select (Radix UI)
+- ✅ StatCard, StatusBadge, Filters
+- ✅ NodesTable, NodeFormDialog, DeleteNodeDialog
+
+### 工具
+- ✅ Simulator CLI: 设备数据模拟器
+  - 随机数据生成
+  - 定时上报
+  - 多设备支持
+
+## 技术改进
+- 修复所有 TypeScript 类型错误
+- 添加 Recharts 用于数据可视化
+- 集成 React Query + tRPC
+- 完善 monorepo workspace 配置
+
+## 验收标准
+所有 specs 中定义的验收标准 (AC) 均已完成
+
+## 构建状态
+✅ TypeScript 类型检查通过
+✅ 生产构建成功
+✅ 所有应用正常编译

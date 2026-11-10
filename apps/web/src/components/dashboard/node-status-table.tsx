@@ -6,14 +6,15 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@IonNode/ui/components/card";
+import { useQuery } from "@tanstack/react-query";
 import { memo, useCallback } from "react";
 
 import { useTRPC } from "../../utils/trpc";
 import { StatusBadge } from "./status-badge";
 
-function getRelativeTime(date: Date): string {
+function getRelativeTime(date: string | Date | null): string {
 	const now = Date.now();
-	const diffMs = now - date.getTime();
+	const diffMs = now - new Date(date || 0).getTime();
 
 	if (diffMs < 60_000) {
 		return `${Math.floor(diffMs / 1000)}s ago`;
@@ -33,7 +34,7 @@ interface NodeRowProps {
 		name: string;
 		type: string;
 		status: "online" | "offline" | "warning";
-		lastSeenAt: Date | null;
+		lastSeenAt: string | null;
 	};
 	onRowClick?: (nodeId: string) => void;
 }
@@ -48,7 +49,11 @@ const NodeRow = memo(function NodeRowComponent({
 
 	return (
 		<tr
-			className={onRowClick ? "cursor-pointer border-b transition-colors hover:bg-muted/50" : "border-b"}
+			className={
+				onRowClick
+					? "cursor-pointer border-b transition-colors hover:bg-muted/50"
+					: "border-b"
+			}
 			key={node.id}
 			onClick={onRowClick ? handleClick : undefined}
 		>
@@ -58,7 +63,7 @@ const NodeRow = memo(function NodeRowComponent({
 				<StatusBadge status={node.status} />
 			</td>
 			<td className="px-4 py-3 text-sm">
-				{node.lastSeenAt ? getRelativeTime(new Date(node.lastSeenAt)) : "Never"}
+				{node.lastSeenAt ? getRelativeTime(node.lastSeenAt) : "Never"}
 			</td>
 		</tr>
 	);
@@ -70,12 +75,10 @@ interface NodeStatusTableProps {
 
 export function NodeStatusTable({ onRowClick }: NodeStatusTableProps) {
 	const trpc = useTRPC();
-	const { data: nodes, isLoading } = trpc.nodes.list.useQuery(
-		{},
-		{
-			refetchInterval: 10_000, // 10 seconds refresh
-		}
-	);
+	const { data: nodes, isLoading } = useQuery({
+		...trpc.nodes.list.queryOptions({}),
+		refetchInterval: 10_000,
+	});
 
 	if (isLoading) {
 		return (
@@ -135,12 +138,8 @@ export function NodeStatusTable({ onRowClick }: NodeStatusTableProps) {
 							</tr>
 						</thead>
 						<tbody>
-							{nodes.map((node: typeof nodes[number]) => (
-								<NodeRow
-									key={node.id}
-									node={node}
-									onRowClick={onRowClick}
-								/>
+							{nodes.map((node: (typeof nodes)[number]) => (
+								<NodeRow key={node.id} node={node} onRowClick={onRowClick} />
 							))}
 						</tbody>
 					</table>

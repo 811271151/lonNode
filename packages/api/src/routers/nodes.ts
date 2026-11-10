@@ -44,7 +44,14 @@ export const nodesRouter = router({
       const { search, status, type } = input ?? {};
 
       // Build where clause
-      const where: Parameters<typeof ctx.db.node.findMany>[0]["where"] = {};
+      const where: {
+        OR?: Array<{
+          name?: { contains: string; mode: "insensitive" };
+          nodeId?: { contains: string; mode: "insensitive" };
+          location?: { contains: string; mode: "insensitive" };
+        }>;
+        type?: { equals: string };
+      } = {};
 
       if (search) {
         where.OR = [

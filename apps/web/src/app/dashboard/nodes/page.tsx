@@ -1,92 +1,164 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@IonNode/ui/components/card";
 import { Button } from "@IonNode/ui/components/button";
-import { Input } from "@IonNode/ui/components/input";
-
+import {
+	Card,
+	CardContent,
+	CardHeader,
+	CardTitle,
+} from "@IonNode/ui/components/card";
+import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
+import { DeleteNodeDialog } from "@/components/nodes/delete-node-dialog";
+import { Filters } from "@/components/nodes/filters";
+import { NodeFormDialog } from "@/components/nodes/node-form-dialog";
+import { NodesTable } from "@/components/nodes/nodes-table";
 import { useTRPC } from "@/utils/trpc";
-import { StatusBadge } from "@/components/dashboard/status-badge";
+
+interface Node {
+	createdAt: string;
+	description?: string | null;
+	id: string;
+	lastSeenAt: string | null;
+	location: string | null;
+	name: string;
+	nodeId: string;
+	status: "online" | "offline" | "warning";
+	type: string;
+}
 
 export default function NodesPage() {
-  const trpc = useTRPC();
-  const router = useRouter();
-  const [search, setSearch] = useState("");
+	const trpc = useTRPC();
+	const router = useRouter();
+	const [search, setSearch] = useState("");
+	const [statusFilter, setStatusFilter] = useState("all");
+	const [typeFilter, setTypeFilter] = useState("all");
+	const [formOpen, setFormOpen] = useState(false);
+	const [deleteOpen, setDeleteOpen] = useState(false);
+	const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+	const [editMode, setEditMode] = useState(false);
 
-  const { data: nodes } = useQuery({
-    ...trpc.nodes.list.queryOptions({ search }),
-    refetchInterval: 10000,
-  });
+	const { data: nodes } = useQuery({
+		...trpc.nodes.list.queryOptions({}),
+		refetchInterval: 10_000,
+	});
 
-  return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Nodes</h1>
-        <Button onClick={() => router.push("/dashboard/nodes/new")}>
-          + Add Node
-        </Button>
-      </div>
+	const nodeTypes = useMemo(() => {
+		if (!nodes) {
+			return [];
+		}
+		return Array.from(new Set(nodes.map((n) => n.type)));
+	}, [nodes]);
 
-      <div className="mb-4">
-        <Input
-          placeholder="Search nodes..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="max-w-sm"
-        />
-      </div>
+	const filteredNodes = useMemo(() => {
+		if (!nodes) {
+			return [];
+		}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>All Devices</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="px-4 py-3 text-left text-sm font-medium">Name</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Node ID</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Type</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Location</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Status</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {nodes?.map((node) => (
-                  <tr
-                    key={node.id}
-                    className="cursor-pointer border-b transition-colors hover:bg-muted/50"
-                    onClick={() => router.push(`/dashboard/nodes/${node.id}`)}
-                  >
-                    <td className="px-4 py-3 text-sm">{node.name}</td>
-                    <td className="px-4 py-3 text-sm font-mono">{node.nodeId}</td>
-                    <td className="px-4 py-3 text-sm">{node.type}</td>
-                    <td className="px-4 py-3 text-sm">{node.location || "-"}</td>
-                    <td className="px-4 py-3">
-                      <StatusBadge status={node.status} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // TODO: Delete functionality
-                        }}
-                      >
-                        Delete
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+		return nodes.filter((node) => {
+			const matchesSearch =
+				search === "" ||
+				node.name.toLowerCase().includes(search.toLowerCase()) ||
+				node.nodeId.toLowerCase().includes(search.toLowerCase()) ||
+				(node.location &&
+					node.location.toLowerCase().includes(search.toLowerCase()));
+
+			const matchesStatus =
+				statusFilter === "all" || node.status === statusFilter;
+			const matchesType = typeFilter === "all" || node.type === typeFilter;
+
+			return matchesSearch && matchesStatus && matchesType;
+		});
+	}, [nodes, search, statusFilter, typeFilter]);
+
+	const handleEdit = (node: Node, e: React.MouseEvent) => {
+		e.stopPropagation();
+		setSelectedNode(node);
+		setEditMode(true);
+		setFormOpen(true);
+	};
+
+	const handleDelete = (
+		node: { id: string; name: string },
+		e: React.MouseEvent
+	) => {
+		e.stopPropagation();
+		setSelectedNode(node as Node);
+		setDeleteOpen(true);
+	};
+
+	const handleAddNew = () => {
+		setSelectedNode(null);
+		setEditMode(false);
+		setFormOpen(true);
+	};
+
+	return (
+		<div className="container mx-auto px-4 py-8">
+			<div className="mb-6 flex items-center justify-between">
+				<h1 className="font-bold text-3xl">Nodes</h1>
+				<Button onClick={handleAddNew}>+ Add Node</Button>
+			</div>
+
+			<Filters
+				nodeTypes={nodeTypes}
+				onSearchChange={setSearch}
+				onStatusChange={setStatusFilter}
+				onTypeChange={setTypeFilter}
+				search={search}
+				statusFilter={statusFilter}
+				typeFilter={typeFilter}
+			/>
+
+			<Card>
+				<CardHeader>
+					<CardTitle>All Devices</CardTitle>
+				</CardHeader>
+				<CardContent>
+					{!filteredNodes || filteredNodes.length === 0 ? (
+						<div className="py-12 text-center">
+							<p className="text-muted-foreground">No nodes found</p>
+							<p className="mt-2 text-muted-foreground text-sm">
+								{nodes && nodes.length > 0
+									? "Try adjusting your filters"
+									: 'Click "Add Node" to create your first device'}
+							</p>
+						</div>
+					) : (
+						<NodesTable
+							nodes={filteredNodes}
+							onDelete={handleDelete}
+							onEdit={handleEdit}
+							onRowClick={(id) => router.push(`/dashboard/nodes/${id}`)}
+						/>
+					)}
+				</CardContent>
+			</Card>
+
+			<NodeFormDialog
+				node={
+					editMode && selectedNode
+						? {
+								description: selectedNode.description,
+								id: selectedNode.id,
+								location: selectedNode.location,
+								name: selectedNode.name,
+								nodeId: selectedNode.nodeId,
+								type: selectedNode.type,
+							}
+						: undefined
+				}
+				onOpenChange={setFormOpen}
+				open={formOpen}
+			/>
+
+			{selectedNode && (
+				<DeleteNodeDialog
+					node={selectedNode}
+					onOpenChange={setDeleteOpen}
+					open={deleteOpen}
+				/>
+			)}
+		</div>
+	);
 }

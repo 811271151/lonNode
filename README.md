@@ -1,130 +1,153 @@
 # IonNode
 
-This project was created with [Better-T-Stack](https://github.com/AmanVarshney01/create-better-t-stack), a modern TypeScript stack that combines Next.js, Hono, TRPC, and more.
+一个功能完整的 IoT 设备管理和数据监控平台
 
-## Features
+## ✨ 特性
 
-- **TypeScript** - For type safety and improved developer experience
-- **Next.js** - Full-stack React framework
-- **React Native** - Build mobile apps using React
-- **Expo** - Tools for React Native development
-- **TailwindCSS** - Utility-first CSS for rapid UI development
-- **Shared UI package** - shadcn/ui primitives live in `packages/ui`
-- **Hono** - Lightweight, performant server framework
-- **tRPC** - End-to-end type-safe APIs
-- **Node.js** - Runtime environment
-- **Prisma** - TypeScript-first ORM
-- **PostgreSQL** - Database engine
-- **Authentication** - Better-Auth
-- **Turborepo** - Optimized monorepo build system
-- **Biome** - Linting and formatting
+- 🎛️ **设备管理**: 完整的 CRUD 操作，支持搜索和筛选
+- 📊 **实时监控**: Dashboard 展示设备状态和统计数据
+- 📈 **数据可视化**: 历史数据图表，支持多种时间范围
+- 🔄 **自动刷新**: 实时数据自动更新
+- 🎮 **设备模拟器**: CLI 工具用于测试和开发
 
-## Getting Started
+## 🏗️ 技术栈
 
-First, install the dependencies:
+### 前端
+- **Next.js 16** - React 框架 (App Router)
+- **TypeScript** - 类型安全
+- **TailwindCSS** - 样式
+- **Recharts** - 数据可视化
+- **Radix UI** - UI 组件
+- **React Query** - 数据获取
+
+### 后端
+- **Hono** - 轻量级 HTTP 服务器
+- **tRPC** - 类型安全的 API
+- **Prisma** - ORM
+- **PostgreSQL** - 数据库
+
+### 工具
+- **pnpm** - 包管理
+- **Turbo** - Monorepo 构建
+- **Biome** - 代码检查和格式化
+
+## 🚀 快速开始
+
+### 前置要求
+
+- Node.js >= 18
+- pnpm >= 8
+- PostgreSQL >= 14
+
+### 安装
 
 ```bash
+# 克隆仓库
+git clone https://github.com/811271151/lonNode.git
+cd lonNode
+
+# 安装依赖
 pnpm install
-```
 
-## Database Setup
+# 配置环境变量
+cp apps/server/.env.example apps/server/.env
+cp apps/web/.env.example apps/web/.env
 
-Generate the Prisma client before development, typechecking, or building, including in CI and deployment builds. Run this again after changing the Prisma schema:
+# 编辑 apps/server/.env 配置数据库连接
+# DATABASE_URL=postgresql://user:password@localhost:5432/ionnode
 
-```bash
-pnpm run db:generate
-```
-
-This project uses PostgreSQL with Prisma.
-
-1. Make sure you have a PostgreSQL database set up.
-2. Update your `apps/server/.env` file with your PostgreSQL connection details.
-
-3. Apply the schema to your database:
-
-```bash
+# 同步数据库
 pnpm run db:push
 ```
 
-Then, run the development server:
+### 运行
 
 ```bash
-pnpm run dev
+# 启动 API 服务器
+pnpm run dev:server
+
+# 启动 Web 应用（新终端）
+pnpm run dev:web
+
+# 启动设备模拟器（可选，新终端）
+pnpm simulator --node-id ION-001 --interval 5000
 ```
 
-Open [http://localhost:3001](http://localhost:3001) in your browser to see the web application.
-From `apps/native`, run the `ios` script for iOS or the `android` script for Android to build and launch the app. See [Expo development builds](https://docs.expo.dev/develop/development-builds/introduction/) for device setup.
-The API is running at [http://localhost:3000](http://localhost:3000).
+访问 http://localhost:3001 查看应用
 
-## UI Customization
-
-React web apps in this stack share shadcn/ui primitives through `packages/ui`.
-
-- Change design tokens and global styles in `packages/ui/src/styles/globals.css`
-- Update shared primitives in `packages/ui/src/components/*`
-- Adjust shadcn aliases or style config in `packages/ui/components.json` and `apps/web/components.json`
-
-### Add more shared components
-
-Run this from the project root to add more primitives to the shared UI package:
-
-```bash
-npx shadcn@latest add accordion dialog popover sheet table -c packages/ui
-```
-
-Import shared components like this:
-
-```tsx
-import { Button } from "@IonNode/ui/components/button";
-```
-
-### Add app-specific blocks
-
-If you want to add app-specific blocks instead of shared primitives, run the shadcn CLI from `apps/web`.
-
-## Environment Configuration
-
-Each app owns its environment schema in `.env.schema`. Varlock generates `src/env.ts` during installation; run `pnpm run env:generate` after changing a schema. Commit schemas, and keep secrets in ignored env files or your deployment platform.
-
-Import the generated `ENV` accessor in application code. Shared database and auth packages receive configuration or initialized clients from the application. See [Varlock's monorepo guide](https://varlock.dev/guides/monorepos/).
-
-Bun's automatic env loading is disabled in `bunfig.toml`; the framework integration or server bootstrap loads Varlock. Node deployments must include Varlock and its dependencies alongside the app schema.
-
-Run standalone Node/Bun tools that use Varlock from the owning app directory so they load that app's schema and env files. `env:generate` only generates TypeScript files; it does not initialize environment values in a subsequent command.
-
-## Git Hooks and Formatting
-
-- Run checks: `pnpm run check`
-
-## Project Structure
+## 📁 项目结构
 
 ```
 IonNode/
 ├── apps/
-│   ├── web/         # Frontend application (Next.js)
-│   ├── native/      # Mobile application (React Native, Expo)
-│   └── server/      # Backend API (Hono, TRPC)
+│   ├── web/                 # Next.js Web 应用
+│   ├── server/              # API 服务器
+│   └── fumadocs/            # 文档站
 ├── packages/
-│   ├── ui/          # Shared shadcn/ui components and styles
-│   ├── api/         # API layer / business logic
-│   ├── auth/        # Authentication configuration & logic
-│   └── db/          # Database schema & queries
+│   ├── api/                 # tRPC API 定义
+│   ├── db/                  # Prisma 数据库
+│   ├── auth/                # Better Auth
+│   └── ui/                  # 共享 UI 组件
+└── tools/
+    └── simulator/           # 设备模拟器 CLI
 ```
 
-## Available Scripts
+## 🎮 功能模块
 
-- `pnpm run dev`: Start all applications in development mode
-- `pnpm run build`: Build all applications
-- `pnpm run dev:web`: Start only the web application
-- `pnpm run dev:server`: Start only the server
-- `pnpm run check-types`: Check TypeScript types across all apps
-- `pnpm run dev:native`: Start the React Native/Expo development server
-- `pnpm run db:push`: Push schema changes to database
-- `pnpm run db:generate`: Generate database client/types
-- `pnpm run db:migrate`: Run database migrations
-- `pnpm run db:studio`: Open database studio UI
-- `pnpm run check`: Run Biome formatting and linting
+### Dashboard
+- 设备统计（总数、在线、离线、告警）
+- 设备状态表格
+- 快速跳转到设备详情
 
-## Better Auth Schema Generation
+### 设备列表
+- 搜索设备（名称/ID/位置）
+- 按状态和类型筛选
+- 添加/编辑/删除设备
 
-After changing auth plugins or schema options, run `pnpm run auth:generate` from the project root. The script runs the Better Auth CLI through `varlock run` from the owning app directory, loading the auth instance from `src/services.ts`. Review the schema changes, then use your ORM's migration workflow to apply them.
+### 设备详情
+- 实时数据展示（温度、湿度、电压、电池）
+- 历史数据图表
+- 时间范围切换（1h/6h/24h/7d）
+
+### 设备模拟器
+- 生成随机传感器数据
+- 定时上报数据
+- 支持多设备并发
+
+## 📝 API 文档
+
+### 设备管理
+- `GET /trpc/nodes.list` - 获取设备列表
+- `GET /trpc/nodes.get` - 获取单个设备
+- `POST /trpc/nodes.create` - 创建设备
+- `POST /trpc/nodes.update` - 更新设备
+- `POST /trpc/nodes.delete` - 删除设备
+
+### 数据管理
+- `POST /trpc/nodeData.report` - 上报数据
+- `GET /trpc/nodeData.latest` - 获取最新数据
+- `GET /trpc/nodeData.list` - 获取历史数据
+
+## 🛠️ 开发
+
+```bash
+# 类型检查
+pnpm run check-types
+
+# 代码检查
+pnpm run check
+
+# 构建
+pnpm run build
+
+# 数据库迁移
+pnpm run db:migrate
+```
+
+## 📄 License
+
+MIT
+
+## 🤝 贡献
+
+欢迎提交 Issue 和 Pull Request！
