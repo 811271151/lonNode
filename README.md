@@ -1,153 +1,129 @@
-# IonNode
+# IonNode · GitHub 资料管理
 
-一个功能完整的 IoT 设备管理和数据监控平台
+IonNode 是一次从 Web 开发到云端自动发布的全栈实践。登录后可以按用户名查询 GitHub 的公开资料，将资料保存到个人列表，修改备注或删除记录。各账号的保存记录独立。
 
-## ✨ 特性
+- **[在线演示](https://ionnode-api-proxy.homeworkdev.workers.dev/)** · 使用 IonNode 邮箱账号登录，也可注册测试账号。
+- **[首次自动部署记录](https://github.com/811271151/lonNode/actions/runs/44250772180)** · `main` 推送触发，提交 `11151d1`，运行成功。
+- **[部署与运维手册](docs/deployment.md)** · 环境变量、生产迁移、手工发布、排错和资源清理。
 
-- 🎛️ **设备管理**: 完整的 CRUD 操作，支持搜索和筛选
-- 📊 **实时监控**: Dashboard 展示设备状态和统计数据
-- 📈 **数据可视化**: 历史数据图表，支持多种时间范围
-- 🔄 **自动刷新**: 实时数据自动更新
-- 🎮 **设备模拟器**: CLI 工具用于测试和开发
+## 演示流程
 
-## 🏗️ 技术栈
+1. 从 Worker 地址打开首页，登录后进入个人工作台。
+2. 查询 `octocat`，保存到「我的 GitHub 资料」。
+3. 写入中文备注，刷新页面，确认会话仍有效且备注能读回。删除这条测试记录，确认列表已移除。
+4. 退出，再打开工作台，确认页面跳转到登录页。
 
-### 前端
-- **Next.js 16** - React 框架 (App Router)
-- **TypeScript** - 类型安全
-- **TailwindCSS** - 样式
-- **Recharts** - 数据可视化
-- **Radix UI** - UI 组件
-- **React Query** - 数据获取
+## 实际部署架构
 
-### 后端
-- **Hono** - 轻量级 HTTP 服务器
-- **tRPC** - 类型安全的 API
-- **Prisma** - ORM
-- **PostgreSQL** - 数据库
+```mermaid
+flowchart LR
+    Browser["浏览器"]
+    Dev["Windows / Navicat"]
+    Actions["GitHub Actions · main"]
+    GitHub["GitHub REST API"]
 
-### 工具
-- **pnpm** - 包管理
-- **Turbo** - Monorepo 构建
-- **Biome** - 代码检查和格式化
+    subgraph CF["Cloudflare"]
+        Worker["Worker · ionnode-api-proxy"]
+        Pages["Pages · ionnode-web"]
+    end
 
-## 🚀 快速开始
+    subgraph AWS["AWS · ap-southeast-2"]
+        Gateway["API Gateway · HTTP API"]
+        subgraph VPC["VPC · 10.0.0.0/16"]
+            subgraph Public["两个公有子网"]
+                NAT["NAT Gateway A / B"]
+                Bastion["EC2 SSH 堡垒机"]
+            end
+            subgraph App["两个私有应用子网"]
+                Lambda["Lambda · ionnode-api"]
+            end
+            subgraph Data["两个私有数据库子网"]
+                Aurora["Aurora PostgreSQL · 私有 writer"]
+            end
+            IGW["Internet Gateway"]
+        end
+    end
 
-### 前置要求
-
-- Node.js >= 18
-- pnpm >= 8
-- PostgreSQL >= 14
-
-### 安装
-
-```bash
-# 克隆仓库
-git clone https://github.com/811271151/lonNode.git
-cd lonNode
-
-# 安装依赖
-pnpm install
-
-# 配置环境变量
-cp apps/server/.env.example apps/server/.env
-cp apps/web/.env.example apps/web/.env
-
-# 编辑 apps/server/.env 配置数据库连接
-# DATABASE_URL=postgresql://user:password@localhost:5432/ionnode
-
-# 同步数据库
-pnpm run db:push
+    Browser -->|"HTTPS · 同源页面和 API"| Worker
+    Worker -->|"页面与静态资源"| Pages
+    Worker -->|"SigV4"| Gateway
+    Gateway -->|"Lambda 集成 · payload 2.0"| Lambda
+    Lambda -->|"私网 TLS · 5432"| Aurora
+    Lambda -->|"同 AZ 出网"| NAT
+    NAT --> IGW -->|"HTTPS"| GitHub
+    Dev -->|"SSH · 22"| Bastion
+    Bastion -->|"私网 · 5432"| Aurora
+    Actions -.->|"Cloudflare API Token"| Pages
+    Actions -.->|"Cloudflare API Token"| Worker
+    Actions -.->|"AWS OIDC · 更新函数代码"| Lambda
 ```
 
-### 运行
+- **浏览器入口。** Worker 将页面转发到 Pages，将白名单内的认证和 tRPC 请求转发到 API Gateway。页面与 API 使用同一个 Worker 地址，会话 Cookie 走同源请求。
+- **两层身份。** AWS IAM 校验 Worker 的 SigV4 签名。Worker 验证受保护请求的会话，Lambda 的 tRPC 中间件再检查登录身份，业务查询和写入按当前用户 ID 限定。
+- **私网访问。** Aurora 关闭公网访问。数据库的 5432 入站只允许 Lambda 和堡垒机安全组。Lambda 请求 GitHub 时，经应用子网对应的 NAT 出网。当前 Aurora 有一个 writer。
+- **发布通道。** GitHub Actions 使用 OIDC 临时凭据更新 Lambda，用 Cloudflare API Token 部署 Pages 和 Worker。生产数据库迁移通过堡垒机隧道执行。
 
-```bash
-# 启动 API 服务器
+## 代码位置
+
+| 路径 | 用途 |
+| --- | --- |
+| [apps/web](apps/web) | Next.js App Router、登录表单、GitHub 工作台、静态导出 |
+| [apps/worker](apps/worker) | 页面转发、API 白名单、会话检查与 SigV4 |
+| [apps/server](apps/server) | Hono HTTP 应用、Lambda 入口与构建配置 |
+| [packages/api](packages/api) | tRPC 路由与共享类型，包含 GitHub 资料管理 |
+| [packages/auth](packages/auth) | Better Auth 登录与会话配置 |
+| [packages/db](packages/db) | Prisma schema、迁移及 PostgreSQL 客户端 |
+| [部署工作流](.github/workflows/deploy.yml) | 构建、发布和公开入口检查 |
+
+仓库中的设备页面和模拟器来自原 IoT 项目，相关需求记录见 [IoT MVP 说明](docs/requirement.md)。本次验收以 Web 资料管理和云部署为范围。
+
+## 本地运行
+
+使用 Node.js 24、仓库指定的 pnpm 10.34.4，以及一个单独用于开发的 PostgreSQL 数据库。从仓库根目录执行 `pnpm install --frozen-lockfile`，然后创建以下两个本地配置文件。
+
+`apps/server/.env`：
+
+```dotenv
+NODE_ENV=development
+BETTER_AUTH_SECRET=<本地生成的随机密钥，至少32字符>
+BETTER_AUTH_URL=http://localhost:3000
+CORS_ORIGIN=http://localhost:3001
+DATABASE_URL=postgresql://<本地用户>:<URL编码后的密码>@localhost:5432/ionnode_dev?schema=public
+```
+
+`apps/web/.env`：
+
+```dotenv
+NEXT_PUBLIC_SERVER_URL=http://localhost:3000
+```
+
+将占位符换成本地值，提前创建 `ionnode_dev` 数据库。浏览器和配置统一使用 `localhost`。
+
+```powershell
+pnpm --filter '@IonNode/db' exec prisma migrate deploy
+pnpm --filter '@IonNode/db' exec prisma generate --no-hints
+```
+
+从项目根目录开两个终端，分别执行：
+
+```powershell
 pnpm run dev:server
+```
 
-# 启动 Web 应用（新终端）
+```powershell
 pnpm run dev:web
-
-# 启动设备模拟器（可选，新终端）
-pnpm simulator --node-id ION-001 --interval 5000
 ```
 
-访问 http://localhost:3001 查看应用
+打开 [http://localhost:3001](http://localhost:3001)。网页在本地直连 Hono，完整的 Worker、API Gateway 与 Lambda 链路可以通过在线入口验收。
 
-## 📁 项目结构
+## 已验证
 
-```
-IonNode/
-├── apps/
-│   ├── web/                 # Next.js Web 应用
-│   ├── server/              # API 服务器
-│   └── fumadocs/            # 文档站
-├── packages/
-│   ├── api/                 # tRPC API 定义
-│   ├── db/                  # Prisma 数据库
-│   ├── auth/                # Better Auth
-│   └── ui/                  # 共享 UI 组件
-└── tools/
-    └── simulator/           # 设备模拟器 CLI
-```
+| 检查项 | 结果与证据 |
+| --- | --- |
+| Web 与 GitHub API | 浏览器登录、刷新保活、查询、保存、中文备注读回、删除和退出通过 |
+| 账号数据隔离 | B 的列表看不到 A 的记录，跨账号修改和删除返回 `404 NOT_FOUND`；A 确认原备注未变，随后可自行删除 |
+| 私网与外部访问 | Navicat 经 SSH 隧道访问 Aurora，迁移成功；在线查询 `octocat` 验证 Lambda 能访问 GitHub |
+| API 入口 | 未签名直连 API Gateway 返回 `403`，未登录访问 Worker 受保护接口返回 `401` |
+| 自动发布 | [第 1 次运行](https://github.com/811271151/lonNode/actions/runs/44250772180) 完成 OIDC、Lambda、Pages、Worker 发布，以及首页与未登录会话接口检查 |
 
-## 🎮 功能模块
-
-### Dashboard
-- 设备统计（总数、在线、离线、告警）
-- 设备状态表格
-- 快速跳转到设备详情
-
-### 设备列表
-- 搜索设备（名称/ID/位置）
-- 按状态和类型筛选
-- 添加/编辑/删除设备
-
-### 设备详情
-- 实时数据展示（温度、湿度、电压、电池）
-- 历史数据图表
-- 时间范围切换（1h/6h/24h/7d）
-
-### 设备模拟器
-- 生成随机传感器数据
-- 定时上报数据
-- 支持多设备并发
-
-## 📝 API 文档
-
-### 设备管理
-- `GET /trpc/nodes.list` - 获取设备列表
-- `GET /trpc/nodes.get` - 获取单个设备
-- `POST /trpc/nodes.create` - 创建设备
-- `POST /trpc/nodes.update` - 更新设备
-- `POST /trpc/nodes.delete` - 删除设备
-
-### 数据管理
-- `POST /trpc/nodeData.report` - 上报数据
-- `GET /trpc/nodeData.latest` - 获取最新数据
-- `GET /trpc/nodeData.list` - 获取历史数据
-
-## 🛠️ 开发
-
-```bash
-# 类型检查
-pnpm run check-types
-
-# 代码检查
-pnpm run check
-
-# 构建
-pnpm run build
-
-# 数据库迁移
-pnpm run db:migrate
-```
-
-## 📄 License
-
-MIT
-
-## 🤝 贡献
-
-欢迎提交 Issue 和 Pull Request！
+工作流的公开检查覆盖首页内容与未登录会话返回 `null`。登录后的业务流和双账号隔离由手工验收覆盖。重复保存行为由 upsert 和唯一约束实现，未单独进行线上的重复保存测试。
