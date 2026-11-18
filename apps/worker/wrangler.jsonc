@@ -1,0 +1,19 @@
+{
+    "$schema":"node_modules/wrangler/config-schema.json",
+    "name":"ionnode-api-proxy",
+    "main":"src/index.js",
+    "compatibility_date":"2026-11-16",
+    "workers_dev": true,
+    "preview_urls": true,
+    "observability": {
+        "enabled": true,
+        "logs": {
+            "enabled": true
+        }
+    },
+    "vars":{
+        "AWS_REGION":"ap-southeast-2",
+        "API_GATEWAY_ORIGIN":"https://30rlysm3a8.execute-api.ap-southeast-2.amazonaws.com",
+        "PAGES_ORIGIN": "https://ionnode-web.pages.dev"
+    }
+}

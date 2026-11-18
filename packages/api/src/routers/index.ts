@@ -1,6 +1,7 @@
 import { protectedProcedure, publicProcedure, router } from "../index";
 import { nodeDataRouter } from "./node-data";
 import { nodesRouter } from "./nodes";
+import { githubRouter } from "./github";
 
 export const appRouter = router({
   healthCheck: publicProcedure.query(() => {
@@ -15,5 +16,6 @@ export const appRouter = router({
   // IonNode routers
   nodes: nodesRouter,
   nodeData: nodeDataRouter,
+  github: githubRouter,
 });
 export type AppRouter = typeof appRouter;

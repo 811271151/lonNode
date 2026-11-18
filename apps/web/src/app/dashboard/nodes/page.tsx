@@ -129,7 +129,9 @@ export default function NodesPage() {
 							nodes={filteredNodes}
 							onDelete={handleDelete}
 							onEdit={handleEdit}
-							onRowClick={(id) => router.push(`/dashboard/nodes/${id}`)}
+							onRowClick={(id) =>
+								router.push(`/dashboard/nodes/detail?id=${encodeURIComponent(id)}`)
+							}
 						/>
 					)}
 				</CardContent>
@@ -139,13 +141,13 @@ export default function NodesPage() {
 				node={
 					editMode && selectedNode
 						? {
-								description: selectedNode.description,
-								id: selectedNode.id,
-								location: selectedNode.location,
-								name: selectedNode.name,
-								nodeId: selectedNode.nodeId,
-								type: selectedNode.type,
-							}
+							description: selectedNode.description,
+							id: selectedNode.id,
+							location: selectedNode.location,
+							name: selectedNode.name,
+							nodeId: selectedNode.nodeId,
+							type: selectedNode.type,
+						}
 						: undefined
 				}
 				onOpenChange={setFormOpen}

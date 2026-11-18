@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 
-import { publicProcedure, router } from "../index";
+import { protectedProcedure, publicProcedure, router } from "../index";
 
 // Node status type
 type NodeStatus = "online" | "offline" | "warning";
@@ -30,7 +30,7 @@ function calculateNodeStatus(
 
 export const nodesRouter = router({
   // List all nodes with optional filters
-  list: publicProcedure
+  list: protectedProcedure
     .input(
       z
         .object({

@@ -1,10 +1,11 @@
 import type { AppRouter } from "@IonNode/api/routers/index";
 import { environmentManager, QueryCache, QueryClient } from "@tanstack/react-query";
-import { createTRPCClient, httpBatchLink } from "@trpc/client";
+import { createTRPCClient, httpLink } from "@trpc/client";
 import { createTRPCContext } from "@trpc/tanstack-react-query";
 import { toast } from "sonner";
 
-export const { TRPCProvider, useTRPC, useTRPCClient } = createTRPCContext<AppRouter>();
+export const { TRPCProvider, useTRPC, useTRPCClient } =
+  createTRPCContext<AppRouter>();
 
 function makeQueryClient() {
   return new QueryClient({
@@ -12,7 +13,7 @@ function makeQueryClient() {
       onError: (error, query) => {
         toast.error(error.message, {
           action: {
-            label: "retry",
+            label: "重试",
             onClick: () => {
               query.invalidate();
             },
@@ -35,10 +36,16 @@ export function getQueryClient() {
 }
 
 export function makeTRPCClient() {
+  const serverUrl = process.env.NEXT_PUBLIC_SERVER_URL;
+
+  if (!serverUrl) {
+    throw new Error("请配置 NEXT_PUBLIC_SERVER_URL");
+  }
+
   return createTRPCClient<AppRouter>({
     links: [
-      httpBatchLink({
-        url: `${process.env.NEXT_PUBLIC_SERVER_URL!.replace(/\/$/, "")}/trpc`,
+      httpLink({
+        url: `${serverUrl.replace(/\/$/, "")}/trpc`,
         fetch(url, options) {
           return fetch(url, {
             ...options,

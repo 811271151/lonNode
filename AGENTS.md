@@ -160,6 +160,7 @@ IonNode/
 - `apps/native/app` 使用 Expo Router 的文件路由，`app/_layout.tsx` 组合导航、主题、React Query 和原生 UI provider。`lib/auth-client.ts` 使用 Better Auth Expo 插件及 SecureStore；`utils/trpc.ts` 连接共享 tRPC API，并为原生平台转发认证 cookie。
 - `apps/server/src/index.ts` 通过 `@hono/node-server` 在 Node.js 上启动 Hono 服务（端口 3000），配置 CORS 和日志，挂载 Better Auth 的 `/api/auth/*` 及 tRPC 的 `/trpc/*`，并提供 `/` 健康响应。`src/services.ts` 根据服务端环境配置创建数据库与认证实例；`src/context.ts` 为每次 tRPC 请求读取会话并注入 `db`、`session`。
 - `apps/fumadocs` 是独立的 Next.js 文档应用；MDX 内容位于 `content/docs`，Fumadocs source adapter 位于 `src/lib/source.ts`，另有文档页面、搜索和 LLM 文本路由。其开发端口配置为 4000。
+- `apps/worker/` is the Cloudflare Worker entry point responsible for sending SigV4-signed requests to AWS API Gateway.
 - `packages/api` 定义共享的 tRPC 上下文、公开/受保护 procedure 和 `appRouter`。当前 router 实际包含 `healthCheck` 与需登录的 `privateData`；Web 和 Native 从 `AppRouter` 推导客户端类型。新增 API procedure 时放在此包，并通过 Hono server 暴露。
 - `packages/auth` 导出 `createAuth(env, database)`，使用 Better Auth 的 Prisma adapter、邮箱密码登录与 Expo 插件；不要在此包中硬编码环境值。
 - `packages/db` 通过 Prisma 7 的 PostgreSQL adapter 创建客户端。Prisma schema 在 `prisma/schema/`，当前 schema 主要包含 Better Auth 的 User、Session、Account、Verification 模型；数据库配置和迁移目录也由此包管理。

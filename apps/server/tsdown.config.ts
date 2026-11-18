@@ -1,11 +1,18 @@
 import { defineConfig } from "tsdown";
 
 export default defineConfig({
-  entry: "./src/index.ts",
-  format: "esm",
-  outDir: "./dist",
-  clean: true,
-  deps: {
-    alwaysBundle: [/@IonNode\/.*/],
-  },
+	clean: true,
+	deps: {
+		alwaysBundle: [
+			/@IonNode\/.*/,
+			/^@hono\//,
+			/^@trpc\//,
+			"hono",
+			"zod",
+			"better-auth",
+		],
+	},
+	entry: ["./src/index.ts", "./src/lambda.ts"],
+	format: "esm",
+	outDir: "./dist",
 });

@@ -1,0 +1,106 @@
+name: Deploy IonNode
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ionnode-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      NEXT_PUBLIC_SERVER_URL: https://ionnode-api-proxy.homeworkdev.workers.dev
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        env:
+          # Prisma needs a URL to load this config. generate does not connect.
+          IONNODE_MIGRATION_URL: postgresql://postgres:unused@127.0.0.1:15432/ionnode
+        run: pnpm --filter '@IonNode/db' exec prisma generate --config prisma.tunnel.config.ts --no-hints
+
+      - name: Check and build
+        run: |
+          pnpm --filter server check-types
+          pnpm --filter server exec tsdown --config tsdown.lambda.config.ts
+          pnpm --filter web build
+          pnpm --filter '@IonNode/worker' build
+
+      - name: Package Lambda
+        run: |
+          build_dir=apps/server/dist-lambda
+          test -s "$build_dir/lambda.mjs"
+          mkdir -p "$build_dir/certs"
+          curl --fail --silent --show-error --retry 3 \
+            https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem \
+            --output "$build_dir/certs/aws-rds-global-bundle.pem"
+          test -s "$build_dir/certs/aws-rds-global-bundle.pem"
+          (
+            cd "$build_dir"
+            zip -q "$RUNNER_TEMP/ionnode-api.zip" ./*.mjs certs/aws-rds-global-bundle.pem
+          )
+          unzip -tq "$RUNNER_TEMP/ionnode-api.zip"
+
+      - name: Check Cloudflare configuration
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [[ -z "$CLOUDFLARE_ACCOUNT_ID" || -z "$CLOUDFLARE_API_TOKEN" ]]; then
+            echo "::error::Set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN in GitHub Actions settings."
+            exit 1
+          fi
+
+      - name: Assume AWS deployment role
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::491740041512:role/ionnode-github-deploy
+          aws-region: ap-southeast-2
+          allowed-account-ids: '491740041512'
+          role-session-name: ionnode-${{ github.run_id }}
+
+      - name: Deploy Lambda
+        run: |
+          aws lambda update-function-code --function-name ionnode-api \
+            --zip-file "fileb://$RUNNER_TEMP/ionnode-api.zip" --query CodeSha256 --output text
+          aws lambda wait function-updated-v2 --function-name ionnode-api
+
+      - name: Deploy Pages
+        working-directory: apps/web
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: ../worker/node_modules/.bin/wrangler pages deploy out --project-name ionnode-web --branch main
+
+      - name: Deploy Worker
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: pnpm --filter '@IonNode/worker' run deploy
+
+      - name: Check public site and session route
+        run: |
+          curl --fail --silent --show-error --retry 3 --max-time 30 "$NEXT_PUBLIC_SERVER_URL/" --output "$RUNNER_TEMP/ionnode-home.html"
+          grep -q 'IonNode GitHub' "$RUNNER_TEMP/ionnode-home.html"
+          session=$(curl --fail --silent --show-error --retry 3 --max-time 30 "$NEXT_PUBLIC_SERVER_URL/api/auth/get-session")
+          test "$session" = null
